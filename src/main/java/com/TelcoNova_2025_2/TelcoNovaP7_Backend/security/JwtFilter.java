@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Component @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
@@ -28,7 +29,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String token = auth.substring(7);
         try {
             var claims = jwt.parse(token).getBody();
-            Long userId = Long.valueOf(claims.getSubject());
+            UUID userId = UUID.fromString(claims.getSubject());
             String role = (String) claims.get("role");
 
             repo.findById(userId).ifPresent(u -> {

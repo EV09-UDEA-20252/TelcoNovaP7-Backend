@@ -8,13 +8,14 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtProvider {
     @Value("${app.jwt.secret}") private String secret;
     @Value("${app.jwt.expiration-ms:86400000}") private long expMs; // 24h
 
-    public String createToken(Long userId, String role) {
+    public String createToken(UUID userId, String role) {
         Instant now = Instant.now();
         return Jwts.builder()
             .setSubject(String.valueOf(userId))
