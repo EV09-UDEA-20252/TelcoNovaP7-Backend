@@ -8,6 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Component @RequiredArgsConstructor
 public class AuthenticationFacade {
@@ -16,7 +17,7 @@ public class AuthenticationFacade {
     public Optional<Usuario> currentUser() {
         Authentication a = SecurityContextHolder.getContext().getAuthentication();
         if (a == null || a.getPrincipal() == null) return Optional.empty();
-        Long userId = (Long) a.getPrincipal();
+        UUID userId = (UUID) a.getPrincipal();
         return repo.findById(userId);
     }
 }
