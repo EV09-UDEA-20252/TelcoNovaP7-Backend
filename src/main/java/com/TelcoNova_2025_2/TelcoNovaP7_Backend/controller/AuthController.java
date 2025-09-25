@@ -27,6 +27,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AuthController {
     private final AuthService service;
 
+    @RestController
+    class PingController {
+        @GetMapping("/ping")
+        public String ping() {
+            return "ok";
+        }
+    }
+
     @Operation(summary = "Registro de usuario", description = "Registra un nuevo usuario en el sistema")
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest req){
@@ -43,4 +51,37 @@ public class AuthController {
     @Operation(summary = "Perfil del usuario actualmente autenticado", description = "Obtiene los detalles del usuario actualmente autenticado")
     @GetMapping("/me")
     public UserResponse me(){ return service.getCurrentUser(); }
+
+    @RestController
+    class DbPingController {
+    private final javax.sql.DataSource ds;
+    DbPingController(javax.sql.DataSource ds) { this.ds = ds; }
+
+    @GetMapping("/db/ping")
+    public String ping() throws Exception {
+        try (var c = ds.getConnection(); var st = c.createStatement()) {
+        var rs = st.executeQuery("select now()");
+        rs.next();
+        return "OK " + rs.getString(1);
+        }
+    }
+    }
+
+    @RestController
+    class DebugDsProps {
+    private final org.springframework.core.env.Environment env;
+    DebugDsProps(org.springframework.core.env.Environment env){ this.env = env; }
+
+    @GetMapping("/__ds")
+    public java.util.Map<String,String> ds() {
+        var m = new java.util.LinkedHashMap<String,String>();
+        m.put("url", env.getProperty("spring.datasource.url"));
+        m.put("username", env.getProperty("spring.datasource.username"));
+        m.put("password_len", String.valueOf(
+            env.getProperty("spring.datasource.password","").length()));
+        return m;
+    }
+    }
+
+
 }

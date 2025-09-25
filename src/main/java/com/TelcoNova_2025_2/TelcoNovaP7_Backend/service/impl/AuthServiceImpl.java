@@ -32,11 +32,12 @@ public class AuthServiceImpl implements AuthService {
         var u = new Usuario();
         u.setNombre(req.nombre());
         u.setEmail(req.email().toLowerCase());
-        u.setNumero_iden(req.numero_iden());
+        u.setNumeroIden(req.numeroIden());
+        u.setTelefono(req.telefono());
         u.setPasswordHash(encoder.encode(req.password()));
-        u.setRol(Rol.OPERARIO); // <- clave: no permitir auto-asignación de ADMIN
+        u.setRol(req.rol());
         var saved = repo.save(u);
-        return new UserResponse(saved.getId(), saved.getNombre(), saved.getEmail(), saved.getRol());
+        return new UserResponse(saved.getIdUsuario(), saved.getNombre(), saved.getEmail(), saved.getRol());
     }
 
     @Transactional(readOnly=true)
@@ -45,12 +46,12 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new ApiException(UNAUTHORIZED, "Credenciales inválidas"));
         if (!encoder.matches(req.password(), u.getPasswordHash()))
         throw new ApiException(UNAUTHORIZED, "Credenciales inválidas");
-        return new AuthResponse(jwt.createToken(u.getId(), u.getRol().name()), "Bearer");
+        return new AuthResponse(jwt.createToken(u.getIdUsuario(), u.getRol().name()), "Bearer");
     }
 
     @Transactional(readOnly=true)
     public UserResponse getCurrentUser() {
         var u = auth.currentUser().orElseThrow(() -> new ApiException(UNAUTHORIZED, "No autenticado"));
-        return new UserResponse(u.getId(), u.getNombre(), u.getEmail(), u.getRol());
+        return new UserResponse(u.getIdUsuario(), u.getNombre(), u.getEmail(), u.getRol());
     }
 }

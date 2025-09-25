@@ -29,19 +29,33 @@ public class JwtFilter extends OncePerRequestFilter {
         String token = auth.substring(7);
         try {
             var claims = jwt.parse(token).getBody();
-            UUID userId = UUID.fromString(claims.getSubject());
-            String role = (String) claims.get("role");
+            String userIdStr = claims.getSubject();
+            UUID userId = UUID.fromString(userIdStr);
+            String role = claims.get("role", String.class);
 
             repo.findById(userId).ifPresent(u -> {
-            var authToken = new UsernamePasswordAuthenticationToken(
-                userId, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+                var authToken = new UsernamePasswordAuthenticationToken(
+                    userId, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             });
-        } catch (JwtException e) {
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
             // token inválido: seguimos sin autenticación; Security decidirá (401 si se requiere)
         }
         }
         chain.doFilter(req, res);
     }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+    String uri = request.getRequestURI();
+    return uri.equals("/api/auth/login")
+        || uri.equals("/api/auth/register")
+        || uri.equals("/api/auth/ping")
+        || uri.equals("/api/auth/db/ping")
+        || uri.startsWith("/v3/api-docs")
+        || uri.startsWith("/swagger-ui")
+        || uri.equals("/swagger-ui.html");
+    }
+
 }
 

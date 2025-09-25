@@ -1,4 +1,5 @@
 HELP.md
+telconova-db/db-data/
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

@@ -9,21 +9,29 @@ import java.util.UUID;
 import jakarta.persistence.*;
 import lombok.Getter; import lombok.Setter;
 
-@Entity @Table(name="usuario", uniqueConstraints=@UniqueConstraint(columnNames="email"))
+@Entity @Table(name="usuario", uniqueConstraints={
+    @UniqueConstraint(columnNames="email"),
+    @UniqueConstraint(columnNames="numero_iden")
+})
 @Getter @Setter
 public class Usuario {
-    @Id @GeneratedValue @UuidGenerator @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "id", columnDefinition = "CHAR(36)")
-    private UUID id;            
+    @Id @GeneratedValue @org.hibernate.annotations.UuidGenerator
+    @Column(name = "id_usuario", nullable = false)
+    private UUID idUsuario;            
 
-    @Column(nullable=false) private String nombre;
-    @Column(nullable=false, unique=true) private String email;
-    @Column(nullable=false) private String numero_iden;
-    @Column(nullable=false) private String passwordHash;
+    @Column(name="nombre", nullable=false) private String nombre;
 
-    @Enumerated(EnumType.STRING) @Column(nullable=false)
-    private Rol rol = Rol.OPERARIO;  // default al registrarse
+    @Column(name = "numero_iden", nullable = false, unique = true) private String numeroIden;
 
-    @Column(nullable=false) private boolean activo = true;
+    @Column(name = "email", nullable=false, unique=true) private String email;
+
+    @Column(name = "telefono", nullable=false) private String telefono;
+
+    @Enumerated(EnumType.STRING) @Column(name = "rol", nullable=false)
+    private Rol rol;
+
+    @Column(name = "password_hash", nullable=false) private String passwordHash;
+
+    @Column(name = "activo", nullable=false) private boolean activo = true;
 }
 
