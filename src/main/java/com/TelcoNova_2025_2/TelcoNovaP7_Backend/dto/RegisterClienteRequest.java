@@ -9,6 +9,9 @@ public record RegisterClienteRequest(
     @NotBlank String nombre,
     @NotBlank @JsonAlias({"identificacion","numero_iden","numeroID","numero_id"}) String identificacion,
     @NotBlank String telefono,
+    @NotBlank String pais,
+    @NotBlank String departamento,
+    @NotBlank String ciudad,
     @NotBlank String direccion,
     @Email @NotBlank String email
 ) {}
