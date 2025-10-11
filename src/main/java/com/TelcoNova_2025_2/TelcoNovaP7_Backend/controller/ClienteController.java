@@ -30,6 +30,9 @@ public class ClienteController {
         cliente.setNombre(request.nombre());
         cliente.setIdentificacion(request.identificacion());
         cliente.setTelefono(request.telefono());
+        cliente.setPais(request.pais());
+        cliente.setDepartamento(request.departamento());
+        cliente.setCiudad(request.ciudad());
         cliente.setDireccion(request.direccion());
         cliente.setEmail(request.email());
         clienteRepository.save(cliente);
@@ -49,6 +52,9 @@ public class ClienteController {
         cliente.setNombre(request.nombre());
         cliente.setIdentificacion(request.identificacion());
         cliente.setTelefono(request.telefono());
+        cliente.setPais(request.pais());
+        cliente.setDepartamento(request.departamento());
+        cliente.setCiudad(request.ciudad());
         cliente.setDireccion(request.direccion());
         cliente.setEmail(request.email());
         clienteRepository.save(cliente);
@@ -68,6 +74,9 @@ public class ClienteController {
             cliente.getNombre(),
             cliente.getIdentificacion(),
             cliente.getTelefono(),
+            cliente.getPais(),
+            cliente.getDepartamento(),
+            cliente.getCiudad(),
             cliente.getDireccion(),
             cliente.getEmail()
         );

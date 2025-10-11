@@ -25,6 +25,15 @@ public class Cliente {
 	@Column(name = "telefono", nullable = false)
 	private String telefono;
 
+	@Column(name = "pais")
+	private String pais;
+
+	@Column(name = "departamento")
+	private String departamento;
+
+	@Column(name = "ciudad")
+	private String ciudad;
+
 	@Column(name = "direccion", nullable = false)
 	private String direccion;
 
