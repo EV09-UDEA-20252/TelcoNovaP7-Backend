@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 public record RegisterRequest(
   @NotBlank String nombre,
   @Email @NotBlank String email,
-  @NotBlank @JsonAlias({"numero_iden","numeroID","numero_id"})
+  @NotBlank @JsonAlias({"numero_iden","numeroID","numero_id", "numeroIden"})
   String numeroIden,
   @NotBlank String telefono,
   @NotNull Rol rol,
