@@ -3,6 +3,7 @@ package com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.OrdenListaItem;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.OrdenTrabajo;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,6 +11,13 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, UUID> {
+    @Query("select ot from OrdenTrabajo ot where ot.idOrden = :id and ot.eliminada = false")
+    Optional<OrdenTrabajo> findByIdAndEliminadaFalse(@Param("id") UUID id);
+
+    @Query("select coalesce(max(ot.consecutivo), -1) from OrdenTrabajo ot")
+    Long findMaxConsecutivo();
+
+    boolean existsByNroOrden(String nroOrden);
 
     @Query("""
         select new com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.OrdenListaItem(
@@ -26,7 +34,8 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, UUID
         join ot.cliente c
         join ot.estadoActual e
         join ot.prioridad p
-        where (:idCliente is null or c.idCliente = :idCliente)
+        where ot.eliminada = false
+        and (:idCliente is null or c.idCliente = :idCliente)
         and (:idTipoServicio is null or ot.tipoServicio.idTipoServicio = :idTipoServicio)
         and (:idPrioridad is null or p.idPrioridad = :idPrioridad)
         and (:idEstado is null or e.idEstado = :idEstado)
@@ -50,4 +59,5 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, UUID
         @Param("q") String q,
         Pageable pageable
     );
+
 }

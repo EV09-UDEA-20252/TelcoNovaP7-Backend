@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS orden_trabajo (
   actualizada_en TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
   programada_en TIMESTAMP WITH TIME ZONE,
   cerrada_en TIMESTAMP WITH TIME ZONE,
+  eliminada BOOLEAN DEFAULT FALSE,
   CONSTRAINT fk_ot_cliente        FOREIGN KEY (id_cliente)       REFERENCES cliente(id_cliente)           ON DELETE RESTRICT,
   CONSTRAINT fk_ot_tipo_servicio  FOREIGN KEY (id_tipo_servicio) REFERENCES tipo_servicio(id_tipo_servicio) ON DELETE RESTRICT,
   CONSTRAINT fk_ot_prioridad      FOREIGN KEY (id_prioridad)     REFERENCES prioridad(id_prioridad)       ON DELETE RESTRICT,
@@ -86,7 +87,7 @@ CREATE TABLE IF NOT EXISTS notificacion (
 
 
 MERGE INTO estado_orden (id_estado, nombre) KEY(id_estado) VALUES
-  (1,'REGISTRADA'), (2,'ASIGNADA'), (3,'EN_PROCESO'), (4,'RESUELTA'), (5,'CERRADA');
+  (1,'ACTIVA'), (2,'EN_PROCESO'), (4,'CERRADA');
 
 MERGE INTO prioridad (id_prioridad, nombre, peso) KEY(id_prioridad) VALUES
   (1,'BAJA',1), (2,'MEDIA',2), (3,'ALTA',3);
@@ -98,3 +99,8 @@ MERGE INTO tipo_servicio (id_tipo_servicio, nombre, sla_horas) KEY(id_tipo_servi
 MERGE INTO cliente (id_cliente, nombre, identificacion, telefono, email, pais, departamento, ciudad, direccion)
   KEY(id_cliente) VALUES
   (RANDOM_UUID(), 'Cliente Demo', 'C-123', '3100000000', 'cliente@demo.local', 'CO', 'ANTIOQUIA', 'MEDELLIN', 'Calle 123 #45-67');
+
+ALTER TABLE orden_trabajo ADD COLUMN IF NOT EXISTS consecutivo BIGINT NOT NULL;
+ALTER TABLE orden_trabajo ADD COLUMN IF NOT EXISTS eliminada BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE orden_trabajo ALTER COLUMN nro_orden SET DATA TYPE VARCHAR(5);
+ALTER TABLE orden_trabajo ADD CONSTRAINT IF NOT EXISTS uk_ot_consecutivo UNIQUE (consecutivo);

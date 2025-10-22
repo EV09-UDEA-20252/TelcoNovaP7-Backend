@@ -1,148 +1,262 @@
 package com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.impl;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.OrdenService;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.HistorialEstado;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.Notificacion;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.OrdenTrabajo;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.*;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.security.AuthenticationFacade;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.common.ApiException;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.informe.InformeOrdenesResp;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.*;
 
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.common.ApiException;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.*;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.*;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.*;
+
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.OrdenService;
 
-import static org.springframework.http.HttpStatus.*;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class OrdenServiceImpl implements OrdenService {
+
     private final OrdenTrabajoRepository ordenRepo;
+    private final ClienteRepository clienteRepo;
+    private final PrioridadRepository prioridadRepo;
+    private final TipoServicioRepository tipoServicioRepo;
     private final EstadoOrdenRepository estadoRepo;
     private final HistorialEstadoRepository historialRepo;
-    private final NotificacionRepository notificacionRepo;
-    private final ClienteRepository clienteRepo;
-    private final TipoServicioRepository tipoRepo;
-    private final PrioridadRepository prioridadRepo;
-    private final AuthenticationFacade auth;
+    private final NotificacionRepository notifRepo;
+    private final UsuarioRepository usuarioRepo;
 
-    private Integer idEstadoPorNombre(String nombre){
-        return estadoRepo.findByNombre(nombre)
-            .orElseThrow(() -> new ApiException(INTERNAL_SERVER_ERROR,"Estado no configurado: " + nombre))
-            .getIdEstado();
-    }
+    private final EntityManager em;
+    private final Clock clock;
 
-    private static String generarNro(){
-        var ts = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS").format(LocalDateTime.now());
-        var rnd = (int)(Math.random()*900)+100;
-        return "OT-" + ts + "-" + rnd;
-    }
-
-    private void crearNotificacionRol(OrdenTrabajo ot, String plantilla, String rol, String detalleExtraJson) {
-        var n = new Notificacion();
-        n.setIdNotif(UUID.randomUUID());
-        n.setOrden(ot);
-        n.setDestinatarioTipo("ROL");
-        n.setDestinatarioId(null);
-        n.setCanal("SISTEMA");
-        n.setPlantilla(plantilla);
-        n.setEstadoEnvio("PENDIENTE");
-
-        String detalle = """
-            {"nroOrden":"%s","rol":"%s"%s}
-            """.formatted(
-                ot.getNroOrden(),
-                rol,
-                (detalleExtraJson != null && !detalleExtraJson.isBlank() ? ","+detalleExtraJson : "")
-            );
-        n.setDetalle(detalle);
-        notificacionRepo.save(n);
-    }
-
-
-    @Transactional
     @Override
+    @Transactional
     public OrdenCreadaResponse crear(CrearOrdenRequest req) {
-        var user = auth.currentUser().orElseThrow(() -> new ApiException(UNAUTHORIZED, "No autenticado"));
+        var ahora = Instant.now(clock);
+
+        // Entidades relacionadas
+        var cliente = clienteRepo.findById(req.idCliente())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Cliente no existe"));
+        var prioridad = prioridadRepo.findById(req.idPrioridad())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Prioridad no existe"));
+        var tipoServicio = tipoServicioRepo.findById(req.idTipoServicio())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Tipo de servicio no existe"));
+        var estadoActiva = estadoRepo.findByNombre("ACTIVA")
+                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Estado ACTIVA no configurado"));
+
+        // Consecutivo / nroOrden
+        Long ultimo = Optional.ofNullable(ordenRepo.findMaxConsecutivo()).orElse(-1L);
+        Long consecutivo = ultimo + 1L;
+        String nroOrden = String.format("%05d", consecutivo);
+
+        UUID userId = currentUserIdOrNull();
 
         var ot = new OrdenTrabajo();
         ot.setIdOrden(UUID.randomUUID());
-        ot.setNroOrden(generarNro());
-        ot.setCliente(clienteRepo.getReferenceById(req.idCliente()));
-        ot.setTipoServicio(tipoRepo.getReferenceById(req.idTipoServicio()));
-        ot.setPrioridad(prioridadRepo.getReferenceById(req.idPrioridad()));
-        ot.setEstadoActual(estadoRepo.getReferenceById(idEstadoPorNombre("REGISTRADA")));
+        ot.setConsecutivo(consecutivo);
+        ot.setNroOrden(nroOrden);
+        ot.setCliente(cliente);
+        ot.setPrioridad(prioridad);
+        ot.setTipoServicio(tipoServicio);
         ot.setDescripcion(req.descripcion());
         ot.setProgramadaEn(req.programadaEn());
-        ot.setCreadaPor(user.getIdUsuario());
-        var now = Instant.now();
-        ot.setCreadaEn(now);
-        ot.setActualizadaEn(now);
+        ot.setEstadoActual(estadoActiva);
+        ot.setCreadaEn(ahora);
+        ot.setCreadaPor(userId);
+        ot.setActualizadaEn(ahora);
+        ot.setEliminada(false);
+
         ordenRepo.save(ot);
 
+        // historial: creada en ACTIVA
         var h = new HistorialEstado();
         h.setIdHist(UUID.randomUUID());
         h.setOrden(ot);
-        h.setEstado(ot.getEstadoActual());
-        h.setCambiadoPor(user.getIdUsuario());
-        h.setCambiadoEn(now);
-        h.setNota("Orden registrada");
+        h.setEstado(estadoActiva);
+        h.setNota("Orden creada");
+        h.setCambiadoEn(ahora);
+        h.setCambiadoPor(userId);
         historialRepo.save(h);
 
-        crearNotificacionRol(ot, "NUEVA_ORDEN", "SUPERVISOR", "\"prioridad\":"+req.idPrioridad());
+        // Notificaciones:
+        // 1) Supervisores: alerta
+        notificarSupervisoresAlCrear(ot);
+
+        // 2) Creador/operario: confirmación
+        if (userId != null) {
+            notificarConfirmacionCreador(ot, userId);
+        }
 
         return new OrdenCreadaResponse(ot.getIdOrden(), ot.getNroOrden());
     }
 
-    @Transactional
+
+    // Editar solo mientras este en estado ACTIVA
     @Override
+    @Transactional
     public void editar(UUID idOrden, EditarOrdenRequest req) {
-        var user = auth.currentUser().orElseThrow(() -> new ApiException(UNAUTHORIZED, "No autenticado"));
-        var ot = ordenRepo.findById(idOrden).orElseThrow(() -> new ApiException(NOT_FOUND, "Orden no encontrada"));
+        var ahora = Instant.now(clock);
+        var ot = ordenRepo.findByIdAndEliminadaFalse(idOrden)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
 
-        var idRegistrada = idEstadoPorNombre("REGISTRADA");
-        if (!Objects.equals(ot.getEstadoActual().getIdEstado(), idRegistrada))
-        throw new ApiException(CONFLICT, "La orden no se puede editar en su estado actual");
+        if (!"ACTIVA".equalsIgnoreCase(ot.getEstadoActual().getNombre())) {
+            throw new ApiException(HttpStatus.CONFLICT, "La orden no se puede editar porque no está ACTIVA");
+        }
 
-        ot.setCliente(clienteRepo.getReferenceById(req.idCliente()));
-        ot.setTipoServicio(tipoRepo.getReferenceById(req.idTipoServicio()));
-        ot.setPrioridad(prioridadRepo.getReferenceById(req.idPrioridad()));
+        // relaciones
+        var cliente = clienteRepo.findById(req.idCliente())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Cliente no existe"));
+        var prioridad = prioridadRepo.findById(req.idPrioridad())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Prioridad no existe"));
+        var tipoServicio = tipoServicioRepo.findById(req.idTipoServicio())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Tipo de servicio no existe"));
+
+        ot.setCliente(cliente);
+        ot.setPrioridad(prioridad);
+        ot.setTipoServicio(tipoServicio);
         ot.setDescripcion(req.descripcion());
         ot.setProgramadaEn(req.programadaEn());
-        ot.setActualizadaEn(Instant.now());
+        ot.setActualizadaEn(ahora);
+
+        ordenRepo.save(ot);
+
+        //Agregar entrada al historial de "edición"
+        var h = new HistorialEstado();
+        h.setIdHist(UUID.randomUUID());
+        h.setOrden(ot);
+        h.setEstado(ot.getEstadoActual()); // Mantenerla ACTIVA
+        h.setNota("Orden editada");
+        h.setCambiadoEn(ahora);
+        h.setCambiadoPor(currentUserIdOrNull());
+        historialRepo.save(h);
+    }
+
+
+    // Cambiar estado aun sin implementar flujo completo
+    @Override
+    @Transactional
+    public void cambiarEstado(UUID idOrden, String nuevoEstadoNombre, String nota) {
+        var ahora = Instant.now(clock);
+        var ot = ordenRepo.findByIdAndEliminadaFalse(idOrden)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
+
+        var actual = ot.getEstadoActual().getNombre().toUpperCase();
+        var nuevo = nuevoEstadoNombre.toUpperCase();
+
+        // Validaciones de transición
+        if (actual.equals("ACTIVA") && nuevo.equals("EN_PROCESO")) {
+            // ok
+        } else if (actual.equals("EN_PROCESO") && nuevo.equals("CERRADA")) {
+            // ok
+        } else {
+            throw new ApiException(HttpStatus.CONFLICT, "Transición de estado no permitida: " + actual + " → " + nuevo);
+        }
+
+        var estadoNuevo = estadoRepo.findByNombre(nuevo)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Estado destino no existe"));
+
+        ot.setEstadoActual(estadoNuevo);
+        ot.setActualizadaEn(ahora);
+        if (nuevo.equals("CERRADA")) {
+            ot.setCerradaEn(ahora);
+        }
+        ordenRepo.save(ot);
+
+        var h = new HistorialEstado();
+        h.setIdHist(UUID.randomUUID());
+        h.setOrden(ot);
+        h.setEstado(estadoNuevo);
+        h.setNota(nota == null ? ("Cambio de estado a " + nuevo) : nota);
+        h.setCambiadoEn(ahora);
+        h.setCambiadoPor(currentUserIdOrNull());
+        historialRepo.save(h);
+    }
+
+    @Override
+    @Transactional
+    public void marcarEliminada(UUID idOrden, String nota) {
+        var ahora = Instant.now(clock);
+        var ot = ordenRepo.findByIdAndEliminadaFalse(idOrden)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
+
+        ot.setEliminada(true);
+        ot.setActualizadaEn(ahora);
         ordenRepo.save(ot);
 
         var h = new HistorialEstado();
         h.setIdHist(UUID.randomUUID());
         h.setOrden(ot);
         h.setEstado(ot.getEstadoActual());
-        h.setCambiadoPor(user.getIdUsuario());
-        h.setCambiadoEn(Instant.now());
-        h.setNota("Orden editada");
+        h.setNota(nota == null ? "Orden marcada como eliminada" : nota);
+        h.setCambiadoEn(ahora);
+        h.setCambiadoPor(currentUserIdOrNull());
         historialRepo.save(h);
-
-        crearNotificacionRol(ot, "ORDEN_EDITADA", "SUPERVISOR", null);
     }
 
-    @Transactional(readOnly = true)
+
     @Override
-    public Page<OrdenListaItem> listar(FiltroOrdenes f, Pageable pageable) {
+    public Page<OrdenListaItem> listar(FiltroOrdenes filtro, Pageable pageable) {
         return ordenRepo.buscarListado(
-            f.idCliente(), f.idTipoServicio(), f.idPrioridad(), f.idEstado(),
-            f.desde(), f.hasta(), f.q(), pageable
+                filtro.idCliente(), filtro.idTipoServicio(), filtro.idPrioridad(), filtro.idEstado(),
+                filtro.desde(), filtro.hasta(), filtro.q(), pageable
         );
     }
 
-    @Transactional(readOnly = true)
     @Override
-    public InformeOrdenesResp resumen(
-        java.time.LocalDate desde, java.time.LocalDate hasta, UUID idCliente, Integer idTipoServicio) {
-        throw new UnsupportedOperationException("Pendiente: queries de resumen");
+    public OrdenDetalleResponse detalle(UUID idOrden) {
+        var ot = ordenRepo.findByIdAndEliminadaFalse(idOrden)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
+        return OrdenDetalleResponse.from(ot);
+    }
+
+
+    private UUID currentUserIdOrNull() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return null;
+        Object principal = auth.getPrincipal();
+        if (principal instanceof UUID id) return id;
+        try { return UUID.fromString(String.valueOf(principal)); } catch (Exception e) { return null; }
+    }
+
+    // ---------- Notificaciones ----------
+    private void notificarSupervisoresAlCrear(OrdenTrabajo ot) {
+        var ahora = Instant.now(clock);
+        List<Usuario> supervisores = usuarioRepo.findAllByRol(Rol.SUPERVISOR);
+        for (var sup : supervisores) {
+            var n = new Notificacion();
+            n.setIdNotif(UUID.randomUUID());
+            n.setOrden(ot);
+            n.setCanal("INAPP");//EN este caso Lugo cambiar esto es solo una simulacion de la notificacion
+            n.setDestinatarioTipo("USUARIO");
+            n.setDestinatarioId(sup.getIdUsuario());
+            n.setPlantilla("ALERTA_ORDEN_CREADA");
+            n.setDetalle("Nueva orden " + ot.getNroOrden() + " creada para cliente " + ot.getCliente().getNombre());
+            n.setEstadoEnvio("PENDIENTE");
+            n.setEnviadoEn(ahora);
+            notifRepo.save(n);
+        }
+    }
+
+    private void notificarConfirmacionCreador(OrdenTrabajo ot, UUID creadorId) {
+        var ahora = Instant.now(clock);
+        var n = new Notificacion();
+        n.setIdNotif(UUID.randomUUID());
+        n.setOrden(ot);
+        n.setCanal("INAPP");
+        n.setDestinatarioTipo("USUARIO");
+        n.setDestinatarioId(creadorId);
+        n.setPlantilla("CONFIRMACION_ORDEN_CREADA");
+        n.setDetalle("Tu orden " + ot.getNroOrden() + " ha sido registrada correctamente.");
+        n.setEstadoEnvio("PENDIENTE");
+        n.setEnviadoEn(ahora);
+        notifRepo.save(n);
     }
 }

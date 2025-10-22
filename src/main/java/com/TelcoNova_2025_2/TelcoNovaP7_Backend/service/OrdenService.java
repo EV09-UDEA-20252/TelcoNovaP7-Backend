@@ -12,5 +12,8 @@ public interface OrdenService {
     OrdenCreadaResponse crear(CrearOrdenRequest req);
     void editar(UUID idOrden, EditarOrdenRequest req);
     Page<OrdenListaItem> listar(FiltroOrdenes filtro, Pageable pageable);
-    InformeOrdenesResp resumen(LocalDate desde, LocalDate hasta, UUID idCliente, Integer idTipoServicio);
+    /* InformeOrdenesResp resumen(LocalDate desde, LocalDate hasta, UUID idCliente, Integer idTipoServicio); */
+    OrdenDetalleResponse detalle(UUID idOrden);
+    void cambiarEstado(UUID idOrden, String nuevoEstado, String nota);
+    void marcarEliminada(UUID idOrden, String motivo);
 }

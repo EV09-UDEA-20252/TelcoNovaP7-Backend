@@ -18,6 +18,7 @@ public class DevSeedConfig {
       createIfMissing(repo, enc, "admin@acme.com",    "00000001", "ADMIN",    "3000000000", Rol.ADMIN,    "admin123");
       createIfMissing(repo, enc, "operario@acme.com", "00000002", "OPERARIO", "3000000001", Rol.OPERARIO, "operario123");
       createIfMissing(repo, enc, "tecnico@acme.com",  "00000003", "TECNICO",  "3000000002", Rol.TECNICO,  "tecnico123");
+      createIfMissing(repo, enc, "supervisor@acme.com", "00000004", "SUPERVISOR", "3000000003", Rol.SUPERVISOR, "supervisor123");
     };
   }
 

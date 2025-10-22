@@ -12,7 +12,8 @@ import java.util.UUID;
 @Getter @Setter
 public class OrdenTrabajo {
     @Id @Column(name="id_orden") private UUID idOrden;
-    @Column(name="nro_orden", nullable = false, unique = true) private String nroOrden;
+    @Column(name="consecutivo", nullable = false, unique = true) private Long consecutivo;
+    @Column(name="nro_orden", nullable = false, unique = true, length=5) private String nroOrden;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="id_cliente", nullable=false) private Cliente cliente;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="id_tipo_servicio", nullable=false) private TipoServicio tipoServicio;
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="id_prioridad", nullable=false) private Prioridad prioridad;
@@ -23,4 +24,5 @@ public class OrdenTrabajo {
     @Column(name="actualizada_en", nullable = false) private Instant actualizadaEn;
     @Column(name="programada_en") private Instant programadaEn;
     @Column(name="cerrada_en") private Instant cerradaEn;
+    @Column(name="eliminada", nullable = false) private boolean eliminada = false;
 }

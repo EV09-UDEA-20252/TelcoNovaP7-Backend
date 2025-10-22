@@ -4,9 +4,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
   @ExceptionHandler(ApiException.class)
   public ResponseEntity<?> handleApi(ApiException ex) {
@@ -48,6 +52,7 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<?> handleOther(Exception ex) {
+    log.error("Error inesperado capturado por ApiExceptionHandler: {}", ex.getMessage(), ex);
     var body = java.util.Map.of(
       "status", 500,
       "error",  "Internal Server Error",

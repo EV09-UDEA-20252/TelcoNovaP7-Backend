@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 
 import java.time.*;
 import java.util.UUID;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ordenes")
@@ -62,4 +63,12 @@ public class OrdenTrabajoController {
         Pageable pageable = PageRequest.of(page, size, sortObj);
         return service.listar(filtro, pageable);
     }
+    
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERARIO')")
+        public ResponseEntity<Map<String,String>> eliminar(@PathVariable UUID id){
+        service.marcarEliminada(id, "Marcada por solicitud del usuario");
+        return ResponseEntity.ok(Map.of("message", "Orden marcada como eliminada"));
+    }
+
 }
