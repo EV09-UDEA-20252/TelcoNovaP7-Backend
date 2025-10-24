@@ -4,22 +4,28 @@ import com.TelcoNova_2025_2.TelcoNovaP7_Backend.common.ApiException;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.*;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.*;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.*;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.informe.*;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.OrdenService;
 
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.OrdenService;
+
 
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.Optional;
+import java.time.LocalDate;
+import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -216,6 +222,42 @@ public class OrdenServiceImpl implements OrdenService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
         return OrdenDetalleResponse.from(ot);
     }
+
+    @Transactional(readOnly = true)
+    @Override
+    public InformeOrdenesResp resumen(LocalDate desde, LocalDate hasta, UUID idCliente, Integer idTipoServicio){
+        LocalDate ini = (desde != null) ? desde : LocalDate.now(clock).withDayOfMonth(1);
+        LocalDate fin = (hasta != null) ? hasta : LocalDate.now(clock);
+
+        Instant iDesde = ini.atStartOfDay(clock.getZone()).toInstant();
+        Instant iHasta = fin.plusDays(1).atStartOfDay(clock.getZone()).toInstant().minusMillis(1);
+
+        var porEstado = ordenRepo.contarPorEstado(iDesde, iHasta, idCliente, idTipoServicio).stream()
+            .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
+
+        var porPrioridad = ordenRepo.conteoPorPrioridad(iDesde, iHasta, idCliente, idTipoServicio).stream()
+            .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
+
+        var porTipoServicio = ordenRepo.conteoPorTipoServicio(iDesde, iHasta, idCliente, idTipoServicio).stream()
+            .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
+
+        Map<LocalDate, Long> mapDia = ordenRepo.conteoPorDia(iDesde, iHasta, idCliente, idTipoServicio).stream()
+            .collect(Collectors.toMap( r-> ((java.sql.Date) r[0]).toLocalDate(), r -> ((Number) r[1]).longValue()));
+        
+        List<InformeOrdenesResp.PorDiaItem> porDia = new ArrayList<>();
+        for (LocalDate d = ini; !d.isAfter(fin); d = d.plusDays(1)){
+            porDia.add(InformeOrdenesResp.PorDiaItem.of(d, mapDia.getOrDefault(d, 0L)));
+        }
+
+        long total = porEstado.values().stream().mapToLong(Long::longValue).sum();
+        return InformeOrdenesResp.of(
+            ini, fin,
+            idCliente, idTipoServicio,
+            total,
+            porEstado, porTipoServicio, porPrioridad, porDia
+        );
+    }
+
 
 
     private UUID currentUserIdOrNull() {
