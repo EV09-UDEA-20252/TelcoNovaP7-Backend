@@ -1,9 +1,4 @@
 package com.TelcoNova_2025_2.TelcoNovaP7_Backend.model;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UuidGenerator;
-import org.hibernate.type.SqlTypes;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UuidGenerator;
 import java.util.UUID;
 
 import jakarta.persistence.*;

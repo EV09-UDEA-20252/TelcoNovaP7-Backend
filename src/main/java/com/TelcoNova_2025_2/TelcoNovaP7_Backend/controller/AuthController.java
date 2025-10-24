@@ -15,6 +15,7 @@ import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.LoginRequest;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.RegisterRequest;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.UserResponse;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.AuthService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,6 +30,7 @@ public class AuthController {
 
     @Operation(summary = "Registro de usuario", description = "Registra un nuevo usuario en el sistema")
     @PostMapping("/register")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest req){
         var res = service.register(req);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
@@ -50,6 +52,7 @@ public class AuthController {
     DbPingController(javax.sql.DataSource ds) { this.ds = ds; }
 
     @GetMapping("/db/ping")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public String ping() throws Exception {
         try (var c = ds.getConnection(); var st = c.createStatement()) {
         var rs = st.executeQuery("select now()");
