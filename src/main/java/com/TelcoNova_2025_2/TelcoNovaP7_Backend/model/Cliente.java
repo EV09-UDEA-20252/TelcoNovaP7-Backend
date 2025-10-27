@@ -3,6 +3,7 @@ import org.hibernate.annotations.UuidGenerator;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import java.util.UUID;
 
 @Entity
 @Table(name = "cliente", uniqueConstraints = {
@@ -14,7 +15,7 @@ import lombok.Setter;
 public class Cliente { 
 	@Id@GeneratedValue@UuidGenerator
 	@Column(name = "id_cliente", nullable = false)
-	private java.util.UUID idCliente;
+	private UUID idCliente;
 
 	@Column(name = "nombre", nullable = false)
 	private String nombre;
@@ -24,6 +25,15 @@ public class Cliente {
 
 	@Column(name = "telefono", nullable = false)
 	private String telefono;
+
+	@Column(name = "pais")
+	private String pais;
+
+	@Column(name = "departamento")
+	private String departamento;
+
+	@Column(name = "ciudad")
+	private String ciudad;
 
 	@Column(name = "direccion", nullable = false)
 	private String direccion;
