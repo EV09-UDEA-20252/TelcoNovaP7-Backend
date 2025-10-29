@@ -30,7 +30,7 @@ public class AuthController {
 
     @Operation(summary = "Registro de usuario", description = "Registra un nuevo usuario en el sistema")
     @PostMapping("/register")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    //@PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest req){
         var res = service.register(req);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
