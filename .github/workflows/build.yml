@@ -7,8 +7,30 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
 
+
+
 jobs:
-  build:
+  unit-tests:
+    name: Unit tests (Maven + JDK 21)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+          cache: 'maven'
+
+      - name: Run unit tests
+        run: mvn -B -U -DskipTests=false test
+
+  sonar:
     name: Build & SonarCloud
     runs-on: ubuntu-latest
     permissions:
