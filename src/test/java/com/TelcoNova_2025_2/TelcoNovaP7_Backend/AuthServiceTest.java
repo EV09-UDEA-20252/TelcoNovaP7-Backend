@@ -38,16 +38,13 @@ import static org.mockito.ArgumentMatchers.*;
 class AuthServiceTest {
     @Mock
     private UsuarioRepository repo;
-
     @Mock
     private PasswordEncoder encoder;
-
     @Mock
     private JwtProvider jwt;
-
     @Mock
     private AuthenticationFacade auth;
-
+    
     @InjectMocks
     private AuthServiceImpl serviceImpl;
 

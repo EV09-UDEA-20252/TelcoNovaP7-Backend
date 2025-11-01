@@ -119,11 +119,11 @@ public class OrdenServiceImpl implements OrdenService {
 
         // relaciones
         var cliente = clienteRepo.findById(req.idCliente())
-                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Cliente no existe"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Cliente no existe"));
         var prioridad = prioridadRepo.findById(req.idPrioridad())
-                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Prioridad no existe"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Prioridad no existe"));
         var tipoServicio = tipoServicioRepo.findById(req.idTipoServicio())
-                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Tipo de servicio no existe"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Tipo de servicio no existe"));
 
         ot.setCliente(cliente);
         ot.setPrioridad(prioridad);
