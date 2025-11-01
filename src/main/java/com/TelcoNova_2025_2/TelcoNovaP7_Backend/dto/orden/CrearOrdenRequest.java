@@ -11,5 +11,5 @@ public record CrearOrdenRequest(
     @NotNull Integer idTipoServicio,
     @NotNull Integer idPrioridad,
     String descripcion,
-    @Nullable @FutureOrPresent Instant programadaEn
+    @Nullable Instant programadaEn
 ) {}
