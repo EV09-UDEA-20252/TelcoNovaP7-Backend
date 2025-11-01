@@ -269,7 +269,7 @@ public class OrdenServiceImpl implements OrdenService {
     }
 
     // ---------- Notificaciones ----------
-    private void notificarSupervisoresAlCrear(OrdenTrabajo ot) {
+    public void notificarSupervisoresAlCrear(OrdenTrabajo ot) {
         var ahora = Instant.now(clock);
         List<Usuario> supervisores = usuarioRepo.findAllByRol(Rol.SUPERVISOR);
         for (var sup : supervisores) {

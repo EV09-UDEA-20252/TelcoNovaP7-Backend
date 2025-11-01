@@ -2,22 +2,30 @@ package com.TelcoNova_2025_2.TelcoNovaP7_Backend;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.lenient;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
+import java.sql.Date;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,6 +40,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.common.ApiException;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.informe.InformeOrdenesResp;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.CrearOrdenRequest;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.EditarOrdenRequest;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.FiltroOrdenes;
@@ -45,6 +54,7 @@ import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.OrdenTrabajo;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.Prioridad;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.Rol;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.TipoServicio;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.Usuario;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.ClienteRepository;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.EstadoOrdenRepository;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.HistorialEstadoRepository;
@@ -85,6 +95,58 @@ class OrdenServiceTest {
     @InjectMocks
     private OrdenServiceImpl serviceImpl;
 
+    private UUID invokeCurrentUserIdOrNull() throws Exception {
+        Method m = OrdenServiceImpl.class.getDeclaredMethod("currentUserIdOrNull");
+        m.setAccessible(true);
+        return (UUID) m.invoke(serviceImpl);
+    }
+
+    @Test
+    void currentUserIdOrNullWithNullAuth() throws Exception {
+        //Arrange
+        SecurityContextHolder.clearContext();
+
+        //Act
+        UUID result = invokeCurrentUserIdOrNull();
+
+        //Assert
+        assertNull(result);
+    }
+
+    void currentUserIdOrNullWithValidString() throws Exception {
+        //Arrange
+        UUID id = UUID.randomUUID();
+        Authentication auth = mock(Authentication.class);
+        when(auth.getPrincipal()).thenReturn(id.toString());
+
+        SecurityContext context = mock(SecurityContext.class);
+        when(context.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(context);
+
+        //Act
+        UUID result = invokeCurrentUserIdOrNull();
+
+        //Assert
+        assertEquals(id, result);
+    }
+
+    @Test
+    void currentUserIdOrNullWithInvalidString() throws Exception {
+        //Arrange
+        Authentication auth = mock(Authentication.class);
+        when(auth.getPrincipal()).thenReturn("no-es-uuid");
+
+        SecurityContext context = mock(SecurityContext.class);
+        when(context.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(context);
+
+        //Act
+        UUID result = invokeCurrentUserIdOrNull();
+
+        //Assert
+        assertNull(result);
+    }
+
     @Test
     void createOrderSuccesful() {
         //Arrange
@@ -114,12 +176,16 @@ class OrdenServiceTest {
         estado.setIdEstado(1);
         estado.setNombre("ACTIVA");
 
+        var supervisor = new Usuario();
+        supervisor.setIdUsuario(UUID.randomUUID());
+        supervisor.setRol(Rol.SUPERVISOR);
+
         when(clienteRepo.findById(idCliente)).thenReturn(Optional.of(cliente));
         when(prioridadRepo.findById(1)).thenReturn(Optional.of(prioridad));
         when(tipoServicioRepo.findById(1)).thenReturn(Optional.of(tipo));
         when(estadoRepo.findByNombre("ACTIVA")).thenReturn(Optional.of(estado));
         when(ordenRepo.findMaxConsecutivo()).thenReturn(5L);
-        when(usuarioRepo.findAllByRol(Rol.SUPERVISOR)).thenReturn(List.of());
+        when(usuarioRepo.findAllByRol(Rol.SUPERVISOR)).thenReturn(List.of(supervisor));
 
         SecurityContext context = mock(SecurityContext.class);
         Authentication auth = mock(Authentication.class);
@@ -135,6 +201,66 @@ class OrdenServiceTest {
         //Assert
         assertNotNull(res);
         assertEquals("00006", res.nroOrden());
+
+        verify(ordenRepo).save(any(OrdenTrabajo.class));
+        verify(historialRepo).save(any(HistorialEstado.class));
+        verify(notifRepo, times(2)).save(any(Notificacion.class));
+    }
+
+    @Test
+    void createOrderWithNotIdCreator() {
+        //Arrange
+        UUID idCliente = UUID.randomUUID();
+
+        CrearOrdenRequest req = new CrearOrdenRequest(
+            idCliente, 
+            1, 
+            1, 
+            "Orden 1", 
+            Instant.parse("2025-01-02T12:00:00Z"));
+
+        var cliente = new Cliente();
+        cliente.setIdCliente(idCliente);
+        cliente.setNombre("Cliente 1");
+
+        var prioridad =  new Prioridad();
+        prioridad.setIdPrioridad(1);
+        prioridad.setNombre("Alta");
+
+        var tipo = new TipoServicio();
+        tipo.setIdTipoServicio(1);
+        tipo.setNombre("Reparacion");
+
+        var estado = new EstadoOrden();
+        estado.setIdEstado(1);
+        estado.setNombre("ACTIVA");
+
+        var supervisor = new Usuario();
+        supervisor.setIdUsuario(UUID.randomUUID());
+        supervisor.setRol(Rol.SUPERVISOR);
+
+        when(clienteRepo.findById(idCliente)).thenReturn(Optional.of(cliente));
+        when(prioridadRepo.findById(1)).thenReturn(Optional.of(prioridad));
+        when(tipoServicioRepo.findById(1)).thenReturn(Optional.of(tipo));
+        when(estadoRepo.findByNombre("ACTIVA")).thenReturn(Optional.of(estado));
+        when(ordenRepo.findMaxConsecutivo()).thenReturn(5L);
+        when(usuarioRepo.findAllByRol(Rol.SUPERVISOR)).thenReturn(List.of(supervisor));
+
+        SecurityContext context = mock(SecurityContext.class);
+        Authentication auth = mock(Authentication.class);
+
+        when(auth.getPrincipal()).thenReturn(null);
+        when(context.getAuthentication()).thenReturn(auth);
+
+        SecurityContextHolder.setContext(context);
+
+        //Act
+        OrdenCreadaResponse res = serviceImpl.crear(req);
+
+        //Assert
+        assertNotNull(res);
+        assertEquals("00006", res.nroOrden());
+
         verify(ordenRepo).save(any(OrdenTrabajo.class));
         verify(historialRepo).save(any(HistorialEstado.class));
         verify(notifRepo).save(any(Notificacion.class));
@@ -473,7 +599,7 @@ class OrdenServiceTest {
     }
 
     @Test
-    void changeStatusSuccesfulWithActiveStatus() {
+    void changeStatusActiveToInProcessSuccesfulWithActiveStatus() {
         //Arrange
         UUID idOrden = UUID.randomUUID();
 
@@ -501,6 +627,38 @@ class OrdenServiceTest {
 
         verify(ordenRepo).save(ot);
         verify(historialRepo).save(any(HistorialEstado.class));
+    }
+
+    @Test
+    void changeStatusInProcessToClosedSuccesfulWithActiveStatusWithNullNote() {
+        //Arrange
+        UUID idOrden = UUID.randomUUID();
+
+        var enProceso = new EstadoOrden();
+        enProceso.setIdEstado(1);
+        enProceso.setNombre("EN_PROCESO");
+
+        var cerrada = new EstadoOrden();
+        cerrada.setIdEstado(2);
+        cerrada.setNombre("CERRADA");
+
+        OrdenTrabajo ot = new OrdenTrabajo();
+        ot.setIdOrden(idOrden);
+        ot.setEstadoActual(enProceso);
+        ot.setEliminada(false);
+
+        when(ordenRepo.findByIdAndEliminadaFalse(idOrden)).thenReturn(Optional.of(ot));
+        when(estadoRepo.findByNombre("CERRADA")).thenReturn(Optional.of(cerrada));
+
+        //Act
+        serviceImpl.cambiarEstado(idOrden, "CERRADA", null);
+
+        //Assert
+        assertEquals("CERRADA", ot.getEstadoActual().getNombre());
+        verify(ordenRepo).save(ot);
+        ArgumentCaptor<HistorialEstado> captor = ArgumentCaptor.forClass(HistorialEstado.class); 
+        verify(historialRepo).save(captor.capture());
+        assertEquals("Cambio de estado a CERRADA", captor.getValue().getNota());
     }
 
     @Test
@@ -635,9 +793,37 @@ class OrdenServiceTest {
 
         //Assert
         assertTrue(ot.isEliminada());
-
         verify(ordenRepo).save(ot);
-        verify(historialRepo).save(any(HistorialEstado.class));
+        ArgumentCaptor<HistorialEstado> captor = ArgumentCaptor.forClass(HistorialEstado.class);
+        verify(historialRepo).save(captor.capture());
+        assertEquals("Eliminada", captor.getValue().getNota());
+    }
+
+    @Test
+    void markEliminatedSuccesfulWithNullNote() {
+        //Arrange
+        UUID idOrden = UUID.randomUUID();
+
+        var activa = new EstadoOrden();
+        activa.setIdEstado(1);
+        activa.setNombre("ACTIVA");
+
+        OrdenTrabajo ot = new OrdenTrabajo();
+        ot.setIdOrden(idOrden);
+        ot.setEstadoActual(activa);
+        ot.setEliminada(false);
+
+        when(ordenRepo.findByIdAndEliminadaFalse(idOrden)).thenReturn(Optional.of(ot));
+
+        //Act
+        serviceImpl.marcarEliminada(idOrden, null);
+
+        //Assert
+        assertTrue(ot.isEliminada());
+        verify(ordenRepo).save(ot);
+        ArgumentCaptor<HistorialEstado> captor = ArgumentCaptor.forClass(HistorialEstado.class);
+        verify(historialRepo).save(captor.capture());
+        assertEquals("Orden marcada como eliminada", captor.getValue().getNota());
     }
 
     @Test
@@ -742,5 +928,104 @@ class OrdenServiceTest {
         //Assert
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
         assertEquals("Orden no encontrada", exception.getMessage());
+    }
+
+    @Test
+    void summaryWithNullDatesUsingDefaultsAndMappingResults() {
+        //Arrange
+        Instant fixedInstant = Instant.parse("2025-10-15T10:00:00Z");
+        Clock fixedClock = Clock.fixed(fixedInstant, ZoneId.of("UTC"));
+
+        when(clock.instant()).thenReturn(fixedClock.instant());
+        when(clock.getZone()).thenReturn(fixedClock.getZone());
+
+        LocalDate expectedIni = LocalDate.now(fixedClock).withDayOfMonth(1);
+        LocalDate expectedFin = LocalDate.now(fixedClock);
+
+        List<Object[]> estados = List.of(new Object[] {"ACTIVA", 7L}, new Object[] {"CERRADA", 2L});
+        when(ordenRepo.contarPorEstado(any(), any(), any(), any())).thenReturn(estados);
+
+        List<Object[]> prioridades = List.of(new Object[] {"Alta", 4L}, new Object[] {"Baja", 1L});
+        when(ordenRepo.conteoPorPrioridad(any(), any(), any(), any())).thenReturn(prioridades);
+
+        List<Object[]> tipos = List.of(new Object[] {"Instalacion", 5L}, new Object[] {"Reparacion", 2L});
+        when(ordenRepo.conteoPorTipoServicio(any(), any(), any(), any())).thenReturn(tipos);
+
+        Date d1 = Date.valueOf(expectedIni);
+        Date d3 = Date.valueOf(expectedIni.plusDays(2));
+        List<Object[]> porDiaRaw = List.of(new Object[] { d1, 2L }, new Object[] { d3, 1L });
+        when(ordenRepo.conteoPorDia(any(), any(), any(), any())).thenReturn(porDiaRaw);
+
+        //Act
+        InformeOrdenesResp resp = serviceImpl.resumen(null, null, null, null);
+
+        //Assert
+        assertNotNull(resp);
+        assertEquals(expectedIni, resp.desde());
+        assertEquals(expectedFin, resp.hasta());
+        assertEquals(9L, resp.total());
+        assertEquals(7L, resp.porEstado().get("ACTIVA").longValue());
+        assertEquals(2L, resp.porEstado().get("CERRADA").longValue());
+        assertEquals(4L, resp.porPrioridad().get("Alta").longValue());
+        assertEquals(5L, resp.porTipoServicio().get("Instalacion").longValue());
+        var mapaDias = resp.porDia()
+                        .stream()
+                        .collect(Collectors.toMap(
+                            InformeOrdenesResp.PorDiaItem::fecha, 
+                            InformeOrdenesResp.PorDiaItem::cantidad));
+        assertEquals(2L, mapaDias.getOrDefault(expectedIni, 0L).longValue());
+        assertEquals(1L, mapaDias.getOrDefault(expectedIni.plusDays(2), 0L).longValue());
+
+        verify(ordenRepo).contarPorEstado(any(), any(), any(), any());
+        verify(ordenRepo).conteoPorPrioridad(any(), any(), any(), any());
+        verify(ordenRepo).conteoPorTipoServicio(any(), any(), any(), any());
+        verify(ordenRepo).conteoPorDia(any(), any(), any(), any());
+    }
+
+    @Test
+    void summaryWithDatesAndFilters() {
+        //Arrange
+        Instant fixedInstant = Instant.parse("2025-10-15T10:00:00Z");
+        Clock fixedClock = Clock.fixed(fixedInstant, ZoneId.of("UTC"));
+
+        when(clock.getZone()).thenReturn(fixedClock.getZone());
+
+        LocalDate desde = LocalDate.of(2025, 6, 1);
+        LocalDate hasta = LocalDate.of(2025, 6, 3);
+        UUID clienteId = UUID.randomUUID();
+        Integer tipoServicioId = 42;
+
+        List<Object[]> estados = List.of(new Object[] {"ACTIVA", 7L}, new Object[] {"CERRADA", 2L});
+        when(ordenRepo.contarPorEstado(any(), any(), eq(clienteId), eq(tipoServicioId))).thenReturn(estados);
+
+        when(ordenRepo.conteoPorPrioridad(any(), any(), eq(clienteId), eq(tipoServicioId))).thenReturn(List.of());
+
+        when(ordenRepo.conteoPorTipoServicio(any(), any(), eq(clienteId), eq(tipoServicioId))).thenReturn(List.of());
+
+        Date dia1 = Date.valueOf(desde);
+        Date dia2 = Date.valueOf(desde.plusDays(1));
+        Date dia3 = Date.valueOf(desde.plusDays(2));
+        List<Object[]> porDiaRaw = List.of(new Object[] { dia1, 2L }, new Object[] { dia2, 3L }, new Object[] { dia3, 2L });
+        when(ordenRepo.conteoPorDia(any(), any(), eq(clienteId), eq(tipoServicioId))).thenReturn(porDiaRaw);
+
+        //Act
+        InformeOrdenesResp resp = serviceImpl.resumen(desde, hasta, clienteId, tipoServicioId);
+
+        //Assert
+        assertNotNull(resp);
+        assertEquals(desde, resp.desde());
+        assertEquals(hasta, resp.hasta());
+        assertEquals(9L, resp.total());
+        var mapaDias = resp.porDia()
+                        .stream()
+                        .collect(Collectors.toMap(
+                            InformeOrdenesResp.PorDiaItem::fecha, 
+                            InformeOrdenesResp.PorDiaItem::cantidad));
+        assertEquals(2L, mapaDias.get(desde).longValue());
+        assertEquals(3L, mapaDias.get(desde.plusDays(1)).longValue());
+        assertEquals(2L, mapaDias.get(desde.plusDays(2)).longValue());
+
+        verify(ordenRepo).contarPorEstado(any(), any(), eq(clienteId), eq(tipoServicioId));
+        verify(ordenRepo).conteoPorDia(any(), any(), eq(clienteId), eq(tipoServicioId));
     }
 }
