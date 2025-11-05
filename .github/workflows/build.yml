@@ -65,3 +65,4 @@ jobs:
             -Dsonar.organization=telconova \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=${SONAR_TOKEN}
+            -Dsonar.qualitygate.wait=true
