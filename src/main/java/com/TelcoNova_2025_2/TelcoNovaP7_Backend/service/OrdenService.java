@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.informe.InformeOrdenesResp;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.*;
 
+import jakarta.persistence.Tuple;
+
 public interface OrdenService {
     OrdenCreadaResponse crear(CrearOrdenRequest req);
     void editar(UUID idOrden, EditarOrdenRequest req);

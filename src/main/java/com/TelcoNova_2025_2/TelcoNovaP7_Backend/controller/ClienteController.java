@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("api/clientes")
-@Tag(name="Cliente", description="Endpoints de gestión de clientes")
+@Tag(name = "Cliente", description = "Endpoints de gestión de clientes")
 public class ClienteController {
     @Autowired
     private ClienteRepository clienteRepository;
@@ -52,7 +52,8 @@ public class ClienteController {
     @Operation(summary = "Edición de Cliente", description = "Edita los datos de un cliente existente")
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','OPERARIO', 'SUPERVISOR')")
-    public ResponseEntity<ClienteResponse> editarCliente(@PathVariable UUID id, @RequestBody @Valid RegisterClienteRequest request) {
+    public ResponseEntity<ClienteResponse> editarCliente(@PathVariable UUID id,
+            @RequestBody @Valid RegisterClienteRequest request) {
         Cliente cliente = clienteRepository.findById(id).orElseThrow();
         cliente.setNombre(request.nombre());
         cliente.setIdentificacion(request.identificacion());
@@ -76,15 +77,14 @@ public class ClienteController {
 
     private ClienteResponse toResponse(Cliente cliente) {
         return new ClienteResponse(
-            cliente.getIdCliente(),
-            cliente.getNombre(),
-            cliente.getIdentificacion(),
-            cliente.getTelefono(),
-            cliente.getPais(),
-            cliente.getDepartamento(),
-            cliente.getCiudad(),
-            cliente.getDireccion(),
-            cliente.getEmail()
-        );
+                cliente.getIdCliente(),
+                cliente.getNombre(),
+                cliente.getIdentificacion(),
+                cliente.getTelefono(),
+                cliente.getPais(),
+                cliente.getDepartamento(),
+                cliente.getCiudad(),
+                cliente.getDireccion(),
+                cliente.getEmail());
     }
 }

@@ -8,6 +8,8 @@ import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.informe.*;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.OrdenService;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Tuple;
+
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,7 +31,7 @@ import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
-public class OrdenServiceImpl implements OrdenService {
+public class OrdenServiceImpl implements OrdenService{
 
     private final OrdenTrabajoRepository ordenRepo;
     private final ClienteRepository clienteRepo;
@@ -210,10 +212,21 @@ public class OrdenServiceImpl implements OrdenService {
 
     @Override
     public Page<OrdenListaItem> listar(FiltroOrdenes filtro, Pageable pageable) {
-        return ordenRepo.buscarListado(
+        Page<Tuple> tuplas =  ordenRepo.buscarListado(
                 filtro.idCliente(), filtro.idTipoServicio(), filtro.idPrioridad(), filtro.idEstado(),
                 filtro.desde(), filtro.hasta(), filtro.q(), pageable
         );
+        return tuplas.map(t -> new OrdenListaItem(
+            t.get("id_orden", UUID.class),
+            t.get("nro_orden", String.class),
+            t.get("id_cliente", UUID.class),
+            t.get("nombre_cliente", String.class),
+            t.get("nombre_estado", String.class),
+            t.get("nombre_prioridad", String.class),
+            t.get("descripcion", String.class),
+            t.get("creadaen", Instant.class)
+        ));
+        
     }
 
     @Override
@@ -235,13 +248,13 @@ public class OrdenServiceImpl implements OrdenService {
         var porEstado = ordenRepo.contarPorEstado(iDesde, iHasta, idCliente, idTipoServicio).stream()
             .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
 
-        var porPrioridad = ordenRepo.conteoPorPrioridad(iDesde, iHasta, idCliente, idTipoServicio).stream()
+        var porPrioridad = ordenRepo.contarPorPrioridad(iDesde, iHasta, idCliente, idTipoServicio).stream()
             .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
 
-        var porTipoServicio = ordenRepo.conteoPorTipoServicio(iDesde, iHasta, idCliente, idTipoServicio).stream()
+        var porTipoServicio = ordenRepo.contarPorTipoServicio(iDesde, iHasta, idCliente, idTipoServicio).stream()
             .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
 
-        Map<LocalDate, Long> mapDia = ordenRepo.conteoPorDia(iDesde, iHasta, idCliente, idTipoServicio).stream()
+        Map<LocalDate, Long> mapDia = ordenRepo.contarPorDia(iDesde, iHasta, idCliente, idTipoServicio).stream()
             .collect(Collectors.toMap( r-> ((java.sql.Date) r[0]).toLocalDate(), r -> ((Number) r[1]).longValue()));
         
         List<InformeOrdenesResp.PorDiaItem> porDia = new ArrayList<>();
@@ -301,4 +314,5 @@ public class OrdenServiceImpl implements OrdenService {
         n.setEnviadoEn(ahora);
         notifRepo.save(n);
     }
+        
 }

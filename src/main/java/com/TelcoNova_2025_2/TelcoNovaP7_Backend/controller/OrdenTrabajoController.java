@@ -18,8 +18,6 @@ import jakarta.validation.Valid;
 import java.time.*;
 import java.util.UUID;
 import java.util.Map;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -42,10 +40,10 @@ public class OrdenTrabajoController {
         service.editar(id, req);
         return ResponseEntity.status(200).build();
     }
-
+    
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','OPERARIO','TECNICO', 'SUPERVISOR')")
-    public Page<OrdenListaItem> listar(
+@PreAuthorize("hasAnyRole('ADMIN','OPERARIO','TECNICO', 'SUPERVISOR')")
+public Page<OrdenListaItem> listar(
         @RequestParam(required = false) UUID idCliente,
         @RequestParam(required = false) Integer idTipoServicio,
         @RequestParam(required = false) Integer idPrioridad,
@@ -56,18 +54,41 @@ public class OrdenTrabajoController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "creadaEn,desc") String sort
-    ){
-        System.out.println(">> User role in context: " + SecurityContextHolder.getContext().getAuthentication().getAuthorities());
-        var filtro = new FiltroOrdenes(idCliente, idTipoServicio, idPrioridad, idEstado, desde, hasta, q);
-        var sortParts = sort.split(",");
-        Sort.Direction direction = (sortParts.length > 1 && "asc".equalsIgnoreCase(sortParts[1]))
-            ? Sort.Direction.ASC
-            : Sort.Direction.DESC;
-        Sort sortObj = Sort.by(direction, sortParts[0]);
-        Pageable pageable = PageRequest.of(page, size, sortObj);
-        return service.listar(filtro, pageable);
+) {
+
+    System.out.println(">> User role in context: "
+            + SecurityContextHolder.getContext().getAuthentication().getAuthorities());
+
+    // Construcción del filtro
+    var filtro = new FiltroOrdenes(
+            idCliente,
+            idTipoServicio,
+            idPrioridad,
+            idEstado,
+            desde,
+            hasta,
+            q
+    );
+
+    // Validación y parsing del parámetro 'sort'
+    String[] sortParts = sort.split(",");
+    String sortField = sortParts[0].trim();
+
+    Sort.Direction direction = Sort.Direction.DESC; // default
+
+    if (sortParts.length > 1) {
+        direction = "asc".equalsIgnoreCase(sortParts[1].trim())
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
     }
-    
+
+    Sort sortObj = Sort.by(direction, sortField);
+
+    Pageable pageable = PageRequest.of(page, size, sortObj);
+
+    return service.listar(filtro, pageable);
+}
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','OPERARIO', 'SUPERVISOR')")
         public ResponseEntity<Map<String,String>> eliminar(@PathVariable UUID id){
@@ -84,5 +105,4 @@ public class OrdenTrabajoController {
         @RequestParam(required = false) Integer idTipoServicio){
         return ResponseEntity.ok(service.resumen(desde, hasta, idCliente, idTipoServicio));
     }
-    
 }

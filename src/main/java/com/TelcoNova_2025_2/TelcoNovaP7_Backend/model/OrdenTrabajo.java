@@ -20,7 +20,7 @@ public class OrdenTrabajo {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name="id_estado_actual", nullable=false) private EstadoOrden estadoActual;
     @Column(name="descripcion") private String descripcion;
     @Column(name="creada_por", nullable = false) private UUID creadaPor;
-    @Column(name="creada_en", nullable = false) private Instant creadaEn;
+    @Column(name="creadaen", nullable = false) private Instant creadaEn;
     @Column(name="actualizada_en", nullable = false) private Instant actualizadaEn;
     @Column(name="programada_en") private Instant programadaEn;
     @Column(name="cerrada_en") private Instant cerradaEn;
