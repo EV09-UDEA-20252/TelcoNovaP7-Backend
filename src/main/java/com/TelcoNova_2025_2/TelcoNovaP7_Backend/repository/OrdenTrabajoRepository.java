@@ -1,6 +1,5 @@
 package com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository;
 
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.OrdenListaItem;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.OrdenTrabajo;
 
 import jakarta.persistence.Tuple;
