@@ -3,7 +3,6 @@ package com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.OrdenTrabajo;
 
 import jakarta.persistence.Tuple;
-
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
