@@ -4,13 +4,15 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record OrdenListaItem(
-    UUID idOrden,
-    String nroOrden,
-    UUID idCliente,
-    String cliente,
-    String estado,
-    String prioridad,
-    String tipoServicio,
-    Instant creadaEn
-) 
-{}
+        UUID idOrden,
+        String nroOrden,
+        UUID idCliente,
+        String cliente,
+        String estado,
+        String prioridad,
+        String nombreTipoServicio,
+        String descripcion,
+        Instant creadaEn
+        ) {
+
+}

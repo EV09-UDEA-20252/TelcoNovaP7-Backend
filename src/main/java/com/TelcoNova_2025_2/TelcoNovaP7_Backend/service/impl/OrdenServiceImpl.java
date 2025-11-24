@@ -18,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -31,7 +30,7 @@ import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
-public class OrdenServiceImpl implements OrdenService{
+public class OrdenServiceImpl implements OrdenService {
 
     private final OrdenTrabajoRepository ordenRepo;
     private final ClienteRepository clienteRepo;
@@ -106,7 +105,6 @@ public class OrdenServiceImpl implements OrdenService{
         return new OrdenCreadaResponse(ot.getIdOrden(), ot.getNroOrden());
     }
 
-
     // Editar solo mientras este en estado ACTIVA
     @Override
     @Transactional
@@ -146,7 +144,6 @@ public class OrdenServiceImpl implements OrdenService{
         h.setCambiadoPor(currentUserIdOrNull());
         historialRepo.save(h);
     }
-
 
     // Cambiar estado aun sin implementar flujo completo
     @Override
@@ -209,24 +206,24 @@ public class OrdenServiceImpl implements OrdenService{
         historialRepo.save(h);
     }
 
-
     @Override
     public Page<OrdenListaItem> listar(FiltroOrdenes filtro, Pageable pageable) {
-        Page<Tuple> tuplas =  ordenRepo.buscarListado(
+        Page<Tuple> tuplas = ordenRepo.buscarListado(
                 filtro.idCliente(), filtro.idTipoServicio(), filtro.idPrioridad(), filtro.idEstado(),
                 filtro.desde(), filtro.hasta(), filtro.q(), pageable
         );
+
         return tuplas.map(t -> new OrdenListaItem(
-            t.get("id_orden", UUID.class),
-            t.get("nro_orden", String.class),
-            t.get("id_cliente", UUID.class),
-            t.get("nombre_cliente", String.class),
-            t.get("nombre_estado", String.class),
-            t.get("nombre_prioridad", String.class),
-            t.get("descripcion", String.class),
-            t.get("creadaen", Instant.class)
+                t.get("id_orden", UUID.class),
+                t.get("nro_orden", String.class),
+                t.get("id_cliente", UUID.class),
+                t.get("nombre_cliente", String.class),
+                t.get("nombre_estado", String.class),
+                t.get("nombre_prioridad", String.class),
+                t.get("nombre_tipo", String.class),
+                t.get("descripcion", String.class),
+                t.get("creadaen", Instant.class)
         ));
-        
     }
 
     @Override
@@ -238,7 +235,7 @@ public class OrdenServiceImpl implements OrdenService{
 
     @Transactional(readOnly = true)
     @Override
-    public InformeOrdenesResp resumen(LocalDate desde, LocalDate hasta, UUID idCliente, Integer idTipoServicio){
+    public InformeOrdenesResp resumen(LocalDate desde, LocalDate hasta, UUID idCliente, Integer idTipoServicio) {
         LocalDate ini = (desde != null) ? desde : LocalDate.now(clock).withDayOfMonth(1);
         LocalDate fin = (hasta != null) ? hasta : LocalDate.now(clock);
 
@@ -246,39 +243,45 @@ public class OrdenServiceImpl implements OrdenService{
         Instant iHasta = fin.plusDays(1).atStartOfDay(clock.getZone()).toInstant().minusMillis(1);
 
         var porEstado = ordenRepo.contarPorEstado(iDesde, iHasta, idCliente, idTipoServicio).stream()
-            .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
+                .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
 
         var porPrioridad = ordenRepo.contarPorPrioridad(iDesde, iHasta, idCliente, idTipoServicio).stream()
-            .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
+                .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
 
         var porTipoServicio = ordenRepo.contarPorTipoServicio(iDesde, iHasta, idCliente, idTipoServicio).stream()
-            .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
+                .collect(Collectors.toMap(r -> (String) r[0], r -> ((Number) r[1]).longValue()));
 
         Map<LocalDate, Long> mapDia = ordenRepo.contarPorDia(iDesde, iHasta, idCliente, idTipoServicio).stream()
-            .collect(Collectors.toMap( r-> ((java.sql.Date) r[0]).toLocalDate(), r -> ((Number) r[1]).longValue()));
-        
+                .collect(Collectors.toMap(r -> ((java.sql.Date) r[0]).toLocalDate(), r -> ((Number) r[1]).longValue()));
+
         List<InformeOrdenesResp.PorDiaItem> porDia = new ArrayList<>();
-        for (LocalDate d = ini; !d.isAfter(fin); d = d.plusDays(1)){
+        for (LocalDate d = ini; !d.isAfter(fin); d = d.plusDays(1)) {
             porDia.add(InformeOrdenesResp.PorDiaItem.of(d, mapDia.getOrDefault(d, 0L)));
         }
 
         long total = porEstado.values().stream().mapToLong(Long::longValue).sum();
         return InformeOrdenesResp.of(
-            ini, fin,
-            idCliente, idTipoServicio,
-            total,
-            porEstado, porTipoServicio, porPrioridad, porDia
+                ini, fin,
+                idCliente, idTipoServicio,
+                total,
+                porEstado, porTipoServicio, porPrioridad, porDia
         );
     }
 
-
-
     private UUID currentUserIdOrNull() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return null;
+        if (auth == null) {
+            return null;
+        }
         Object principal = auth.getPrincipal();
-        if (principal instanceof UUID id) return id;
-        try { return UUID.fromString(String.valueOf(principal)); } catch (Exception e) { return null; }
+        if (principal instanceof UUID id) {
+            return id;
+        }
+        try {
+            return UUID.fromString(String.valueOf(principal));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ---------- Notificaciones ----------
@@ -314,5 +317,5 @@ public class OrdenServiceImpl implements OrdenService{
         n.setEnviadoEn(ahora);
         notifRepo.save(n);
     }
-        
+
 }

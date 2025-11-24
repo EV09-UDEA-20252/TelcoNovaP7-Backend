@@ -1,18 +1,22 @@
 package com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.OrdenTrabajo;
 
 import jakarta.persistence.Tuple;
-import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.List;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.*;
-import org.springframework.data.repository.query.Param;
 
 public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, UUID> {
+
     @Query("select ot from OrdenTrabajo ot where ot.idOrden = :id and ot.eliminada = false")
     Optional<OrdenTrabajo> findByIdAndEliminadaFalse(@Param("id") UUID id);
 
@@ -20,9 +24,9 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, UUID
     Long findMaxConsecutivo();
 
     boolean existsByNroOrden(String nroOrden);
-        
+
     @Query(
-    value = """
+            value = """
         select * from consultar_ordenes(
             cast(:idCliente as uuid), 
             cast(:idTipoServicio as int), 
@@ -33,29 +37,30 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, UUID
             cast(:hasta as timestamp)
         )
         """,
-    countQuery = """
+            countQuery = """
         select count(*) from consultar_ordenes(
-            cast(:idCliente as uuid), 
-            cast(:idTipoServicio as int), 
-            cast(:idPrioridad as int), 
+            cast(:idCliente as uuid),
+            cast(:idTipoServicio as int),
+            cast(:idPrioridad as int),
             cast(:idEstado as int),
             :q, 
-            cast(:desde as timestamp), 
+            cast(:desde as timestamp),
             cast(:hasta as timestamp)
         )
         """,
-    nativeQuery = true
-        )
-        Page<Tuple> buscarListado(
-                @Param("idCliente") UUID idCliente,
-                @Param("idTipoServicio") Integer idTipoServicio,
-                @Param("idPrioridad") Integer idPrioridad,
-                @Param("idEstado") Integer idEstado,
-                @Param("desde") Instant desde,
-                @Param("hasta") Instant hasta,
-                @Param("q") String q,
-                Pageable pageable
-        );
+            nativeQuery = true
+    )
+    Page<Tuple> buscarListado(
+            @Param("idCliente") UUID idCliente,
+            @Param("idTipoServicio") Integer idTipoServicio,
+            @Param("idPrioridad") Integer idPrioridad,
+            @Param("idEstado") Integer idEstado,
+            @Param("desde") Instant desde,
+            @Param("hasta") Instant hasta,
+            @Param("q") String q,
+            Pageable pageable
+    );
+
     @Query(value = """
     select e.nombre, count(ot.id_orden)
     from orden_trabajo ot
@@ -66,15 +71,15 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, UUID
       and (:idTipoServicio is null or ot.id_tipo_servic = :idTipoServicio)
     group by e.nombre
     """,
-    nativeQuery = true)
-List<Object[]> contarPorEstado(
-        @Param("desde") Instant desde,
-        @Param("hasta") Instant hasta,
-        @Param("idCliente") UUID idCliente,
-        @Param("idTipoServicio") Integer idTipoServicio
-);
+            nativeQuery = true)
+    List<Object[]> contarPorEstado(
+            @Param("desde") Instant desde,
+            @Param("hasta") Instant hasta,
+            @Param("idCliente") UUID idCliente,
+            @Param("idTipoServicio") Integer idTipoServicio
+    );
 
-        @Query(value = """
+    @Query(value = """
     select p.nombre, count(ot.id_orden)
     from orden_trabajo ot
     join prioridad p on p.id_prioridad = ot.id_prioridad
@@ -84,15 +89,15 @@ List<Object[]> contarPorEstado(
       and (:idTipoServicio is null or ot.id_tipo_servic = :idTipoServicio)
     group by p.nombre
     """,
-    nativeQuery = true)
-List<Object[]> contarPorPrioridad(
-        @Param("desde") Instant desde,
-        @Param("hasta") Instant hasta,
-        @Param("idCliente") UUID idCliente,
-        @Param("idTipoServicio") Integer idTipoServicio
-);
+            nativeQuery = true)
+    List<Object[]> contarPorPrioridad(
+            @Param("desde") Instant desde,
+            @Param("hasta") Instant hasta,
+            @Param("idCliente") UUID idCliente,
+            @Param("idTipoServicio") Integer idTipoServicio
+    );
 
-   @Query(value = """
+    @Query(value = """
     select ts.nombre, count(ot.id_orden)
     from orden_trabajo ot
     join tipo_servicio ts on ts.id_tipo_servic = ot.id_tipo_servic
@@ -102,14 +107,15 @@ List<Object[]> contarPorPrioridad(
       and (:idTipoServicio is null or ot.id_tipo_servic = :idTipoServicio)
     group by ts.nombre
     """,
-    nativeQuery = true)
-List<Object[]> contarPorTipoServicio(
-        @Param("desde") Instant desde,
-        @Param("hasta") Instant hasta,
-        @Param("idCliente") UUID idCliente,
-        @Param("idTipoServicio") Integer idTipoServicio
-);
-   @Query(value = """
+            nativeQuery = true)
+    List<Object[]> contarPorTipoServicio(
+            @Param("desde") Instant desde,
+            @Param("hasta") Instant hasta,
+            @Param("idCliente") UUID idCliente,
+            @Param("idTipoServicio") Integer idTipoServicio
+    );
+
+    @Query(value = """
     select cast(ot.creado_en as date) as fecha, count(ot.id_orden)
     from orden_trabajo ot
     where ot.eliminada = false
@@ -119,12 +125,12 @@ List<Object[]> contarPorTipoServicio(
     group by cast(ot.creado_en as date)
     order by cast(ot.creado_en as date)
     """,
-    nativeQuery = true)
-List<Object[]> contarPorDia(
-        @Param("desde") Instant desde,
-        @Param("hasta") Instant hasta,
-        @Param("idCliente") UUID idCliente,
-        @Param("idTipoServicio") Integer idTipoServicio
-);
+            nativeQuery = true)
+    List<Object[]> contarPorDia(
+            @Param("desde") Instant desde,
+            @Param("hasta") Instant hasta,
+            @Param("idCliente") UUID idCliente,
+            @Param("idTipoServicio") Integer idTipoServicio
+    );
 
 }
