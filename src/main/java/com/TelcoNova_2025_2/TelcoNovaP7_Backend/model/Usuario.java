@@ -1,5 +1,6 @@
 package com.TelcoNova_2025_2.TelcoNovaP7_Backend.model;
 import java.util.UUID;
+import java.time.Instant;
 
 import jakarta.persistence.*;
 import lombok.Getter; import lombok.Setter;
@@ -20,7 +21,7 @@ public class Usuario {
 
     @Column(name = "email", nullable=false, unique=true) private String email;
 
-    @Column(name = "telefono", nullable=false) private String telefono;
+    @Column(name = "telefono", nullable=false, length=10) private String telefono;
 
     @Enumerated(EnumType.STRING) @Column(name = "rol", nullable=false)
     private Rol rol;
@@ -28,5 +29,14 @@ public class Usuario {
     @Column(name = "password_hash", nullable=false) private String passwordHash;
 
     @Column(name = "activo", nullable=false) private boolean activo = true;
+    
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "account_locked", nullable = false)
+    private boolean accountLocked = false;
+
+    @Column(name = "account_locked_at")
+    private Instant accountLockedAt;
 }
 

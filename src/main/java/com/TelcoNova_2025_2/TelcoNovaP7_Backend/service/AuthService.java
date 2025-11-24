@@ -9,4 +9,6 @@ public interface AuthService {
     UserResponse register(RegisterRequest request);
     AuthResponse login(LoginRequest request);
     UserResponse getCurrentUser();
+    String createPasswordResetToken(String email);
+    void confirmPasswordReset(com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.PasswordResetConfirmRequest req);
 }

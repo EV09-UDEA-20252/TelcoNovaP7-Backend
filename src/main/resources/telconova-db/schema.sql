@@ -3,10 +3,13 @@ CREATE TABLE usuario (
     nombre TEXT NOT NULL,
     numero_iden TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
-    telefono TEXT NOT NULL,
+    telefono VARCHAR(10) NOT NULL,
     rol TEXT NOT NULL,
     password_hash TEXT NOT NULL,
-    activo BOOLEAN NOT NULL DEFAULT TRUE
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    failed_login_attempts INT NOT NULL DEFAULT 0,
+    account_locked BOOLEAN NOT NULL DEFAULT FALSE,
+    account_locked_at TIMESTAMPTZ
 );
 
 CREATE TABLE cliente (
@@ -73,6 +76,13 @@ CREATE TABLE notificacion(
     enviado_en TIMESTAMPTZ,
     estado_envio TEXT NOT NULL DEFAULT 'PENDIENTE',
     detalle TEXT
+);
+
+CREATE TABLE password_reset_token (
+    token TEXT PRIMARY KEY,
+    id_usuario UUID NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$

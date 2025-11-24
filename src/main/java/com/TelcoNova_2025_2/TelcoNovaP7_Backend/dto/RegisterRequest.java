@@ -13,7 +13,7 @@ public record RegisterRequest(
   @Email @NotBlank String email,
   @NotBlank @JsonAlias({"numero_iden","numeroID","numero_id", "numeroIden"})
   String numeroIden,
-  @NotBlank String telefono,
+  @NotBlank @jakarta.validation.constraints.Size(min = 9, max = 10) String telefono,
   @NotNull Rol rol,
   @Size(min=8, max=64) String password
 ) {}

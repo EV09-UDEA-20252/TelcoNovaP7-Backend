@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 import jakarta.validation.Valid;
 
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.AuthResponse;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.LoginRequest;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.RegisterRequest;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.UserResponse;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.PasswordResetRequest;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.PasswordResetConfirmRequest;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.AuthResponse;
 import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.AuthService;
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -40,6 +42,21 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest req){
         return service.login(req);
+    }
+
+    @Operation(summary = "Solicitar recuperación de contraseña", description = "Genera un token de recuperación válido 10 minutos y lo envía al correo (demo: se retorna en la respuesta)")
+    @PostMapping("/password-reset")
+    public ResponseEntity<String> requestPasswordReset(@Valid @RequestBody PasswordResetRequest req) {
+        var token = service.createPasswordResetToken(req.email());
+        // En un entorno real se envía por correo; aquí devolvemos el token para propósitos de demo/pruebas
+        return ResponseEntity.ok(token);
+    }
+
+    @Operation(summary = "Confirmar recuperación de contraseña", description = "Confirma token y permite establecer nueva contraseña")
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<Void> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest req) {
+        service.confirmPasswordReset(req);
+        return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Perfil del usuario actualmente autenticado", description = "Obtiene los detalles del usuario actualmente autenticado")

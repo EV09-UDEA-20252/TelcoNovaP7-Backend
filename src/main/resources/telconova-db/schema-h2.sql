@@ -3,10 +3,13 @@ CREATE TABLE IF NOT EXISTS usuario (
   nombre TEXT NOT NULL,
   numero_iden TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL UNIQUE,
-  telefono TEXT NOT NULL,
+  telefono VARCHAR(10) NOT NULL,
   rol TEXT NOT NULL,
   password_hash TEXT NOT NULL,
-  activo BOOLEAN NOT NULL DEFAULT TRUE
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  failed_login_attempts INT NOT NULL DEFAULT 0,
+  account_locked BOOLEAN NOT NULL DEFAULT FALSE,
+  account_locked_at TIMESTAMP WITH TIME ZONE
 );
 
 CREATE TABLE IF NOT EXISTS cliente (
@@ -83,6 +86,14 @@ CREATE TABLE IF NOT EXISTS notificacion (
   estado_envio TEXT NOT NULL DEFAULT 'PENDIENTE',
   detalle TEXT,
   CONSTRAINT fk_notif_ot FOREIGN KEY (id_orden) REFERENCES orden_trabajo(id_orden) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS password_reset_token (
+  token VARCHAR(255) PRIMARY KEY,
+  id_usuario UUID NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  CONSTRAINT fk_prt_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE
 );
 
 
