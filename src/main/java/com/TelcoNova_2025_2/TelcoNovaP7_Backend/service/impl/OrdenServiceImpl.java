@@ -1,32 +1,48 @@
 package com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.impl;
 
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.common.ApiException;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.*;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.*;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.*;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.informe.*;
-import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.OrdenService;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Tuple;
-
-import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-import java.util.Optional;
-import java.time.LocalDate;
-import java.util.stream.Collectors;
-import java.util.Map;
-import java.util.ArrayList;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.common.ApiException;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.informe.InformeOrdenesResp;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.CrearOrdenRequest;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.EditarOrdenRequest;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.FiltroOrdenes;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.OrdenCreadaResponse;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.OrdenDetalleResponse;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.dto.orden.OrdenListaItem;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.HistorialEstado;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.Notificacion;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.OrdenTrabajo;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.Rol;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.model.Usuario;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.ClienteRepository;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.EstadoOrdenRepository;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.HistorialEstadoRepository;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.NotificacionRepository;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.OrdenTrabajoRepository;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.PrioridadRepository;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.TipoServicioRepository;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.repository.UsuarioRepository;
+import com.TelcoNova_2025_2.TelcoNovaP7_Backend.service.OrdenService;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Tuple;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -113,23 +129,18 @@ public class OrdenServiceImpl implements OrdenService {
         var ot = ordenRepo.findByIdAndEliminadaFalse(idOrden)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Orden no encontrada"));
 
-        if (!"ACTIVA".equalsIgnoreCase(ot.getEstadoActual().getNombre())) {
-            throw new ApiException(HttpStatus.CONFLICT, "La orden no se puede editar porque no está ACTIVA");
-        }
-
         // relaciones
-        var cliente = clienteRepo.findById(req.idCliente())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Cliente no existe"));
         var prioridad = prioridadRepo.findById(req.idPrioridad())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Prioridad no existe"));
         var tipoServicio = tipoServicioRepo.findById(req.idTipoServicio())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Tipo de servicio no existe"));
+        var estado = estadoRepo.findById(req.idEstado())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Estado de orden no existe"));
 
-        ot.setCliente(cliente);
         ot.setPrioridad(prioridad);
         ot.setTipoServicio(tipoServicio);
         ot.setDescripcion(req.descripcion());
-        ot.setProgramadaEn(req.programadaEn());
+        ot.setEstadoActual(estado);
         ot.setActualizadaEn(ahora);
 
         ordenRepo.save(ot);
